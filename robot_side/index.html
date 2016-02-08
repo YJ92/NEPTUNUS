@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PlayRTC Robot side</title>
+  <meta charset="utf-8">
+  <script src="http://code.jquery.com/jquery-1.12.0.min.js"></script>
+  <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    #callerLocalVideo{
+      width:100%;
+    }
+  </style>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+  var socket = io();
+  </script>
+</head>
+<body onload="connectRTC()">
+
+<div class="container-fluid">
+ <div class="row">
+   <div class="col-md-3">
+   <h1>NEPTUNUS ROBOT</h1><hr>
+     <form class="form-inline">
+     <div class="form-group">
+       <label class="sr-only" for="createChannelId">Channel Id</label>
+       <input class="form-control" type="text" id="createChannelId" placeholder="Create and connect the channel." value="" readonly>
+     </div>
+     <button class="btn btn-default" id="createChannel">
+       <span class="glyphicon glyphicon-phone-alt" aria-hidden="true"></span> Create Channel
+     </button>
+    </form>     
+    <video id="callerLocalVideo"></video>
+   </div>
+   <div class="col-md-9">
+     <h1>Send Text</h1><hr>
+     <textarea id="sendMessage" cols="100" rows="15"></textarea>
+      <button class="btn btn-default" id="send">
+        <span class="glyphicon glyphicon-send" aria-hidden="true"></span> Send Text
+      </button>
+     <h1>Received Text</h1><hr>
+     <textarea id="receivedMessage" cols="100" rows="15" readonly></textarea>
+   </div>
+ </div>
+</div>
+
+<script src="http://www.playrtc.com/sdk/js/playrtc.min.js"></script>
+<script>
+     'use strict';
+     var createChannelButton = document.querySelector('#createChannel');
+     var sendButton = document.querySelector('#send');
+     var sendMessage = document.querySelector('#sendMessage');
+     var recevedMessage = document.querySelector("#receivedMessage");
+     var appCaller;
+
+    appCaller = new PlayRTC({
+      projectKey: "264c307f-2d7f-44fd-8928-cd1963360a13",
+      localMediaTarget: "callerLocalVideo",
+      userMedia:{
+        audio:false
+      }
+    });
+
+    createChannelButton.addEventListener('click', function(e) {
+      e.preventDefault();
+      appCaller.createChannel();
+    });
+
+    appCaller.on('connectChannel', function(channelId) {
+      createChannelId.value = channelId;
+    });    
+
+    appCaller.on('addDataStream', function (pid, uid, dataChannel) {
+      dataChannel.on('message', function (message) {
+        if (message.type === 'text') {
+          receivedMessage.value = message.data;
+          socket.emit('data',message.data);
+        }
+      });
+
+      dataChannel.on('error', function (event) {
+        alert('ERROR. See the log.');
+      });
+    });
+
+    appCaller.on("stateChange", function(state, peerid, userid){
+
+        if (state == "DISCONNECTED"){
+          appCaller.deleteChannel();
+          location.reload();
+        }
+
+    });
+
+    sendButton.addEventListener('click', function (event) {
+      var data = sendMessage.value;
+
+      event.preventDefault();
+      if (!data) {
+        return false;
+      };
+      appCaller.sendText(data);
+      sendMessage.value = "";
+      return false;
+    }, false); 
+
+    function connectRTC(){
+      appCaller.createChannel();
+    }
+</script>
+
+</body>
